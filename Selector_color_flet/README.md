@@ -1,5 +1,5 @@
 # 🎨 Selector de Colores RGB/HEX/HSL - Flet
-
+<div style="display: flex; gap: 10px; margin: 15px 0;"> <img src="https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white" alt="Python"> <img src="https://img.shields.io/badge/Flet-0.1.0-00B0FF?logo=flutter&logoColor=white" alt="Flet"> <img src="https://img.shields.io/badge/Platforms-Desktop|Mobile|Web-4BC0C0" alt="Multiplataforma"> </div>
 Un selector de colores interactivo y moderno creado con **Flet (Python)** que te permite:
 
 * Ajustar colores mediante **sliders RGB**
