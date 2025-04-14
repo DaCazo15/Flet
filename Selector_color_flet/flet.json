@@ -1,0 +1,13 @@
+{
+    "name": "PaleColors",
+    "display_name": "PaleColors",
+    "build_name": "PaleColors",
+    "description": "Aplicación para seleccionar colores en formatos RGB/HEX/HSL",
+    "version": "1.0.0",
+    "icon": "assets/app_icon.png",
+    "python": "main.py",
+    "splash": {
+        "image": "assets/splash.png",
+        "duration": 4000
+    }
+}
