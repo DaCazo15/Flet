@@ -1,13 +1,15 @@
 import flet as ft
 from flet import *
-import aiohttp, asyncio
 from style.constants import *
-from googletrans import Translator
+from modules.api_requests import *
+from modules.translator import *
 
 class Pokedex(Container):
     def __init__(self, page):
         super().__init__()
         self.page = page
+        self.peticiones = Peticiones()
+        self.translator = Traducir()
         self.title = Text("Pokedex", font_family=FONT_BOLD, size=SCALE["sizes"]["title"], color=STYLES["clrs"]["clr-txt-primary"])
         self.nombre = Text("Pokemon", font_family=FONT, size=SCALE["sizes"]["subtitle"], color=STYLES["clrs"]["clr-txt-secondary"])
         self.tipo = Text("Tipo", font_family=FONT, size=SCALE["sizes"]["subtitle"], color=STYLES["clrs"]["clr-txt-secondary"])
@@ -18,17 +20,9 @@ class Pokedex(Container):
         self.pokemon_stats, self.stat_widgets = {}, []
         self.img_down_arrow = Image(src=IMG["down"], scale=0.6, opacity=1.0)
         self.img_up_arrow = Image(src=IMG["up"], scale=0.6, opacity=1.0)  
-
-        self.dic_tipo = {
-            "grass": "Planta", 
-            "bug": "Bicho", 
-            "electric": "Electrico", 
-            "ground": "Tierra", 
-            "psychic": "Psiquico", 
-            "dark": "Siniestro",
-            "dragon": "Dragon"
-        }
-        self.traducir, self.pantalla = True, True
+        self.dic_tipo = TIPO
+        
+        self.traducir, self.pantalla, self.buscar, self.favorito = True, True, False, False
         self.pokemon_image = Image(
             src=f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{self.current_pokemon}.png",
             fit=ImageFit.CONTAIN,
@@ -39,26 +33,13 @@ class Pokedex(Container):
             animate_offset=animation.Animation(300, "easeOut"),
             animate_opacity=animation.Animation(300, "easeIn"),
             animate_scale=animation.Animation(300, "bounceOut"))
-        self.btn_ui()
         self.create_ui()
-# -------------------------------- Traductor -------------------------------
-    async def traductor(self, texto):
-        try:
-            if self.traducir:
-                translator = Translator()
-                if texto in self.dic_tipo:
-                    return self.dic_tipo[texto]
-                else:
-                    translation = translator.translate(texto, src='en', dest='es')  
-                    return translation.text 
-            else:
-                return texto
-        except Exception as e:
-            print(f"Error en la traducción: {e}")
-            return texto
 # -------------------------------- UI -------------------------------
     def create_ui(self):
+        self.btn_ui()
         self.containers()
+        if self.buscar:
+            self.content = self.contenedor_buscar
         if self.pantalla:
             self.content = self.contenedor_superior
         else:
@@ -192,7 +173,36 @@ class Pokedex(Container):
         self.contenedor_top_inf = Container(
             Column([
                 Row([
-                    self.btn_back,
+                    self.btn_back_inf if not self.buscar else self.btn_back_buscar,
+                    Row(controls=[Container(
+                        self.title, 
+                        bgcolor=STYLES["clrs"]["clr-screen"],
+                        width=150,
+                        border_radius=25,
+                        border=border.all(2, color="#5d5d5d"),
+                        alignment=alignment.center,
+                        margin=margin.only(left=129, top=4))]
+                    )
+                ])
+            ]),
+            bgcolor=STYLES["clrs"]["clr-card-top"],
+            width=SCALE["scale-page"]["width"] - 25,
+            height=60,
+            border_radius=10,
+            margin=margin.only(top=25),
+            alignment=alignment.center)
+        
+        self.contenedor_inf = Container(
+            width=SCALE["scale-page"]["width"],
+            height=SCALE["scale-page"]["height"],
+            bgcolor=STYLES["clrs"]["clr-bg"],
+            alignment=alignment.top_center)
+
+        # Contenedor para la vista de buscar
+        self.contenedor_top_buscar = Container(
+            Column([
+                Row([
+                    self.btn_back_buscar,
                     Row(controls=[Container(
                         self.title, 
                         bgcolor=STYLES["clrs"]["clr-screen"],
@@ -211,7 +221,19 @@ class Pokedex(Container):
             margin=margin.only(top=25),
             alignment=alignment.center)
 
-        self.contenedor_inf = Container(
+        self.contenedor_input = Container(
+            width=SCALE["scale-page"]["width"] - 25,
+            height=50,
+            border_radius=10,
+            alignment=alignment.center)
+
+        self.contenedor_buscar = Container(
+            Column([
+                self.contenedor_top_buscar,
+                self.contenedor_center,
+                self.contenedor_input,
+                self.contenedor_bottom
+            ], alignment=alignment.top_center), 
             width=SCALE["scale-page"]["width"],
             height=SCALE["scale-page"]["height"],
             bgcolor=STYLES["clrs"]["clr-bg"],
@@ -219,7 +241,7 @@ class Pokedex(Container):
 # ---------------------------- btn UI -------------------------------
     def btn_ui(self):
         self.boton_azul = Container(
-            Icon(Icons.TRANSLATE, color=STYLES["clrs"]["clr-txt-primary"]),
+            Icon(Icons.TRANSLATE, color=STYLES["clr-btn-icon"]["azul"]),
             bgcolor=STYLES["clr-btn"]["blue"],
             width=50,
             height=50,
@@ -230,26 +252,29 @@ class Pokedex(Container):
             on_hover=lambda e: self.hover_effect_btn_clrs(e, "blue")) 
         
         self.boton_rojo = Container(
+            Icon(Icons.RESTART_ALT, color=STYLES["clr-btn-icon"]["rojo"], size=18),
             bgcolor=STYLES["clr-btn"]["red"],
             width=25,
             height=25,
             border=SCALE["borders"]["b-btn"],
             border_radius=50,
             margin=margin.only(top=25, right=2.5),
-            on_click=lambda e: print("Botón rojo clickeado"),
+            on_click=self.reiniciar_app,  
             on_hover=lambda e: self.hover_effect_btn_clrs(e, "red"))
         
         self.boton_verde = Container(
+            Icon(Icons.SEARCH, color=STYLES["clr-btn-icon"]["verde"], size=15),
             bgcolor=STYLES["clr-btn"]["green"],
             width=25,
             height=25,
             border=SCALE["borders"]["b-btn"],
             border_radius=50,
             margin=margin.only(top=25, right=2.5),
-            on_click=lambda e: print("Botón verde clickeado"),
+            on_click=lambda e: self.toggle_buscar(e),
             on_hover=lambda e: self.hover_effect_btn_clrs(e, "green"))
         
         self.boton_amarillo = Container(
+            Icon(Icons.STAR, color=STYLES["clr-btn-icon"]["amarillo"], size=15),
             bgcolor=STYLES["clr-btn"]["yellow"],
             width=25,
             height=25,
@@ -289,16 +314,51 @@ class Pokedex(Container):
             on_click=lambda e: self.toggle_pantalla(e),
             on_hover=lambda e: self.hover_effect(e))
         
-        self.btn_back = Container(
+        self.btn_back_inf = Container(
             IconButton(
                 icon=Icons.ARROW_BACK,
-                icon_color=STYLES["clrs"]["clr-btn-back"],
+                icon_color=STYLES["clrs"]["clr-btn"],
                 on_click=self.toggle_pantalla,
                 icon_size=30
             ),
             alignment=alignment.top_left,
             padding=5)
+        
+        self.btn_back_buscar = Container(
+            IconButton(
+                icon=Icons.ARROW_BACK,
+                icon_color=STYLES["clrs"]["clr-btn"],
+                on_click=self.toggle_buscar,
+                icon_size=30
+            ),
+            alignment=alignment.top_left,
+            padding=5)
 # ------------------------------ Funcionalidad --------------------
+    #---------------- Cambiar tamaño de screen --------------------
+    def screen_chica(self):
+        self.contenedor_center.height = 200
+        self.pokemon_image.height = SCALE["sizes-img"]["img-pokemon-inf"]
+        self.pokemon_image.width = SCALE["sizes-img"]["img-pokemon-inf"]
+
+        container = self.poke_screen.content  
+        container.padding = margin.only(top=10)
+        stack = container.content
+        if isinstance(stack, Stack): 
+            stack.controls[0].height = 180  
+            stack.controls[1].height = 160 
+            stack.controls[2].margin = SCALE["m-i-pokemon"]["scr-inf"]
+
+    def screen_grande(self):
+        self.contenedor_center.height = 260
+        self.pokemon_image.height = SCALE["sizes-img"]["img-pokemon"]
+        self.pokemon_image.width = SCALE["sizes-img"]["img-pokemon"]
+
+        container = self.poke_screen.content  
+        stack = container.content
+        if isinstance(stack, Stack): 
+            stack.controls[0].height = 235  
+            stack.controls[1].height = 200 
+            stack.controls[2].margin = SCALE["m-i-pokemon"]["scr-init"]
     #---------------- Hovers ----------
     def hover_effect_img(self, e, img):
         if img == "down":
@@ -326,11 +386,11 @@ class Pokedex(Container):
     async def cargar_detalles(self):
         try:
             if not self.pokemon_stats.get(self.current_pokemon): 
-                response = await self.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
+                response = await self.peticiones.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
                 if response:
                     stats = {}
                     for stat in response['stats']:
-                        stat_name = await self.traductor(stat['stat']['name'].replace('-', ' ')) 
+                        stat_name = await self.translator.traductor(stat['stat']['name'].replace('-', ' ')) 
                         stats[stat_name] = stat['base_stat'] 
                     print(f"Traducir está {'activado' if self.traducir else 'desactivado'}")
 
@@ -339,7 +399,7 @@ class Pokedex(Container):
                         'weight': response['weight'] / 10,  # Convertir a kg
                         'stats': stats,
                         'types': [
-                            await self.traductor(t['type']['name']) if self.traducir else t['type']['name'] 
+                            await self.translator.traductor(t['type']['name']) if self.traducir else t['type']['name'] 
                             for t in response['types']
                         ]
                     }
@@ -420,16 +480,6 @@ class Pokedex(Container):
     
     def click_up(self, e):
         e.page.loop.create_task(self.evento(e, "arriba"))
-
-    async def peticion(self, url): # Peticion a la API
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    response.raise_for_status() 
-                    return await response.json()
-        except Exception as e:
-            print(f"Error en la petición: {e}")
-            return None
   
     async def evento(self, event, direction=None):
         try:
@@ -443,35 +493,19 @@ class Pokedex(Container):
                     self.current_pokemon = TOP_POKEMON
                 else:
                     self.current_pokemon -= 1
-            self.resultado = await self.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
+            self.resultado = await self.peticiones.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
             
             if self.resultado and "name" in self.resultado:
                 nombre = self.resultado['name'].capitalize()
                 tipos = [tipo['type']['name'] for tipo in self.resultado['types']]
                 self.pokemon_nombre.value = nombre
                 if self.traducir:
-                    self.pokemon_tipo.value = ', '.join([await self.traductor(tipo if tipo not in self.dic_tipo else self.dic_tipo[tipo]) for tipo in tipos]).upper()
+                    self.pokemon_tipo.value = ', '.join([await self.translator.traductor(tipo if tipo not in self.dic_tipo else self.dic_tipo[tipo]) for tipo in tipos]).upper()
                 else:
                     self.pokemon_tipo.value = ', '.join([tipo for tipo in tipos]).upper()
                 
                 self.pokemon_image.src = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{self.current_pokemon}.png"
                 
-                # Animación de entrada
-                self.offset_x = 0
-                self.opacity = 1
-                self.scale = 1
-                
-                if direction == "abajo":
-                    self.offset_x = 1  # Entra desde la derecha
-                elif direction == "arriba":
-                    self.offset_x = -1  # Entra desde la izquierda
-                    
-                self.page.update()
-                
-                # Pequeña pausa antes de centrar
-                await asyncio.sleep(0.1)
-                
-                self.offset_x = 0
                 self.page.update()
                 
         except Exception as e:
@@ -480,6 +514,43 @@ class Pokedex(Container):
             self.pokemon_tipo.value = ""
             self.page.update()
 
+    async def reiniciar_app(self, e):
+        e.page.loop.create_task(self.reiniciar(e))
+
+    async def reiniciar(self, e):
+        self.current_pokemon = 0
+        
+        self.pokemon_stats = {}
+        self.stat_widgets = []
+        
+        self.pantalla = True
+        
+        self.pokemon_image.src = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{self.current_pokemon}.png"
+        self.pokemon_image.height = SCALE["sizes-img"]["img-pokemon"]
+        self.pokemon_image.width = SCALE["sizes-img"]["img-pokemon"]
+        
+        self.pokemon_nombre.value = "---"
+        self.pokemon_tipo.value = ""
+        
+        self.resultado = await self.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
+        
+        if self.resultado and "name" in self.resultado:
+            nombre = self.resultado['name'].capitalize()
+            tipos = [tipo['type']['name'] for tipo in self.resultado['types']]
+            self.pokemon_nombre.value = nombre
+            
+            if self.traducir:
+                traducciones = await asyncio.gather(
+                    *[self.traductor(tipo if tipo not in self.dic_tipo else self.dic_tipo[tipo]) for tipo in tipos]
+                )
+                self.pokemon_tipo.value = ', '.join(traducciones).upper()
+            else:
+                self.pokemon_tipo.value = ', '.join(tipos).upper()
+        
+        self.create_ui()
+        await asyncio.sleep(0)  # Permite que el event loop procese correctamente
+        self.page.update()
+
     def toggle_traducir(self, e): # traducir ~ no traducir
         self.traducir = not self.traducir
         e.page.loop.create_task(self.evento(e))
@@ -487,31 +558,20 @@ class Pokedex(Container):
     def toggle_pantalla(self, e): 
         self.pantalla = not self.pantalla
         if not self.pantalla:
-
-            self.contenedor_center.height = 200
-            self.pokemon_image.height = SCALE["sizes-img"]["img-pokemon-inf"]
-            self.pokemon_image.width = SCALE["sizes-img"]["img-pokemon-inf"]
-
-            container = self.poke_screen.content  
-            container.padding = margin.only(top=10)
-            stack = container.content
-            if isinstance(stack, Stack): 
-                stack.controls[0].height = 180  
-                stack.controls[1].height = 160 
-                stack.controls[2].margin = SCALE["m-i-pokemon"]["scr-inf"]
-
+            self.screen_chica()
             e.page.loop.create_task(self.cargar_detalles())
         else:
-            self.contenedor_center.height = 260
-            self.pokemon_image.height = SCALE["sizes-img"]["img-pokemon"]
-            self.pokemon_image.width = SCALE["sizes-img"]["img-pokemon"]
+            self.screen_grande()
+            self.create_ui()
 
-            container = self.poke_screen.content  
-            stack = container.content
-            if isinstance(stack, Stack): 
-                stack.controls[0].height = 235  
-                stack.controls[1].height = 200 
-                stack.controls[2].margin = SCALE["m-i-pokemon"]["scr-init"]
+    def toggle_buscar(self, e):
+        self.buscar = not self.buscar
+        if self.buscar:
+            self.screen_chica()
+            self.content = self.contenedor_buscar
+            self.page.update()
+        else:
+            self.screen_grande()
             self.create_ui()
 
 async def main(page: ft.Page):

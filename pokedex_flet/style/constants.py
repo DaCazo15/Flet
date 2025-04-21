@@ -12,11 +12,17 @@ STYLES = {
 
         "clr-btn-inf": Colors.GREY_800,
         "clr-btn-inf-hover": "#5d5d5d",
-        "clr-btn-back": Colors.WHITE,
+        "clr-btn": Colors.WHITE,
 
         "clr-txt-primary": Colors.GREY_800,
         "clr-txt-secondary": Colors.GREY_300,
         "clr-txt-tertiary": Colors.GREY_500,
+    },
+    "clr-btn-icon": {
+        "azul": Colors.BLUE_900,
+        "rojo": Colors.RED_900,
+        "verde": Colors.GREEN_900,
+        "amarillo": Colors.YELLOW_900,
     },
     "clr-div": {
         "gre-div": Colors.GREEN_500,
@@ -47,6 +53,10 @@ IMG = {
     "down": "assets/down.png",
     "down-def": 1.0,
     "down-hover": 0.4,
+
+    "intro": "assets/Pokeball.png",
+    "intro-def": 1.0,
+    "intro-hover": 0.4,
 }
 # SCALE
 SCALE = {
@@ -70,7 +80,48 @@ SCALE = {
     "sizes-img": {
         "img-pokemon": 130,
         "img-pokemon-inf": 100,
+    }
+}
+
+MARGIN = {
+    "mrg-top": {
+        "margin-t-20": 20,
+        "margin-t-40": 40,
+        "margin-t-60": 60,
+        "margin-t-80": 80,
+        "margin-t-100": 100,
     },
+    "mrg-left": {
+        "margin-l-20": 20,
+        "margin-l-40": 40,
+        "margin-l-60": 60,
+        "margin-l-80": 80,
+        "margin-l-100": 100,
+    },
+    "mrg-right": {
+        "margin-r-20": 20,
+        "margin-r-40": 40,
+        "margin-r-60": 60,
+        "margin-r-80": 80,
+        "margin-r-100": 100,
+    },
+    "mrg-bottom": {
+        "margin-b-20": 20,
+        "margin-b-40": 40,
+        "margin-b-60": 60,
+        "margin-b-80": 80,
+        "margin-b-100": 100,
+    }
+}
+
+TIPO = {
+    "grass": "Planta", 
+    "bug": "Bicho", 
+    "electric": "Electrico", 
+    "ground": "Tierra", 
+    "psychic": "Psiquico", 
+    "dark": "Siniestro",
+    "dragon": "Dragon"
 }
 
 # Fuentes
