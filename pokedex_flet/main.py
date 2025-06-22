@@ -33,10 +33,10 @@ class Pokedex(Container):
             animate_offset=animation.Animation(300, "easeOut"),
             animate_opacity=animation.Animation(300, "easeIn"),
             animate_scale=animation.Animation(300, "bounceOut"))
+        self.btn_ui()
         self.create_ui()
 # -------------------------------- UI -------------------------------
     def create_ui(self):
-        self.btn_ui()
         self.containers()
         if self.buscar:
             self.content = self.contenedor_buscar
@@ -222,9 +222,31 @@ class Pokedex(Container):
             alignment=alignment.center)
 
         self.contenedor_input = Container(
+            Container(
+                Row([
+                    Container(
+                        IconButton(
+                            icon=Icons.SEARCH,
+                            icon_color=STYLES["clrs"]["clr-btn-inf"], icon_size=25,
+                            bgcolor=STYLES["clrs"]["clr-card"],
+                            on_click=lambda e: print("Buscar"), 
+                            hover_color=Colors.GREY_600,
+                        ), margin=margin.only(left=8, right=-5)
+                    ),
+                    TextField(
+                        hint_text="Buscar Pokémon",
+                        width=280,
+                        border=2,
+                        border_radius=10,
+                        border_color=Colors.GREY_700,
+                        bgcolor=Colors.GREY_700,
+                    ),
+                ]),padding=5
+            ),
             width=SCALE["scale-page"]["width"] - 25,
             height=50,
             border_radius=10,
+            bgcolor=STYLES["clrs"]["clr-card"],
             alignment=alignment.center)
 
         self.contenedor_buscar = Container(
@@ -365,11 +387,11 @@ class Pokedex(Container):
             self.btn_arrow_down.content.opacity = IMG["down-hover"] if e.data == "true" else IMG["down-def"]
         elif img == "up":
             self.btn_arrow_up.content.opacity = IMG["up-hover"] if e.data == "true" else IMG["up-def"]
-        e.control.update()
+        self.page.update()
 
     def hover_effect(self, e):
         e.control.bgcolor = STYLES["clrs"]["clr-btn-inf-hover"] if e.data == "true" else STYLES["clrs"]["clr-btn-inf"]
-        e.control.update()
+        self.page.update()
 
     def hover_effect_btn_clrs(self, e, clr):
         if clr == "blue":
@@ -380,7 +402,7 @@ class Pokedex(Container):
             e.control.bgcolor = STYLES["clr-btn"]["green-hover"] if e.data == "true" else STYLES["clr-btn"]["green"]
         elif clr == "yellow":
             e.control.bgcolor = STYLES["clr-btn"]["yellow-hover"] if e.data == "true" else STYLES["clr-btn"]["yellow"]
-        e.control.update()
+        self.page.update()
 
     #---------------- Cargar detalles ----------
     async def cargar_detalles(self):
@@ -532,7 +554,7 @@ class Pokedex(Container):
         self.pokemon_nombre.value = "---"
         self.pokemon_tipo.value = ""
         
-        self.resultado = await self.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
+        self.resultado = await self.peticiones.peticion(f"https://pokeapi.co/api/v2/pokemon/{self.current_pokemon}")
         
         if self.resultado and "name" in self.resultado:
             nombre = self.resultado['name'].capitalize()
@@ -541,7 +563,7 @@ class Pokedex(Container):
             
             if self.traducir:
                 traducciones = await asyncio.gather(
-                    *[self.traductor(tipo if tipo not in self.dic_tipo else self.dic_tipo[tipo]) for tipo in tipos]
+                    *[self.translator.traductor(tipo if tipo not in self.dic_tipo else self.dic_tipo[tipo]) for tipo in tipos]
                 )
                 self.pokemon_tipo.value = ', '.join(traducciones).upper()
             else:
@@ -550,7 +572,7 @@ class Pokedex(Container):
         self.create_ui()
         await asyncio.sleep(0)  # Permite que el event loop procese correctamente
         self.page.update()
-
+# ----------------------------- toggle -----------
     def toggle_traducir(self, e): # traducir ~ no traducir
         self.traducir = not self.traducir
         e.page.loop.create_task(self.evento(e))
